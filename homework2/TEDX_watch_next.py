@@ -1,7 +1,7 @@
 import sys
 import json # per lavorare json
 import pyspark #per lavare pyspark
-from pyspark.sql.functions import col, collect_list, concat, to_date, substring, lit, concat_ws, unix_timestamp #alcune funzioni particolari di pyspark
+from pyspark.sql.functions import col, collect_list, concat, to_date, substring, lit, concat_ws, unix_timestamp, collect_set #alcune funzioni particolari di pyspark
 
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
@@ -72,8 +72,8 @@ tedx_dataset_agg.printSchema()
 pattern = "dd-MMM-yyyy"
 
 #watch_dataset_agg = watch_dataset.groupBy(col("idx").alias("idx_ref")).agg(collect_list("watch_next_idx"), collect_list("url"))
-watch_dataset_agg = watch_dataset.groupBy(col("idx").alias("idx_ref")).agg(collect_list("watch_next_idx").alias("wnext"), collect_list("url").alias("url"))
-watch_dataset_agg.select(concat(col("wnext"),col("url")))
+watch_dataset_agg = watch_dataset.groupBy(col("idx").alias("idx_ref")).agg(collect_set("watch_next_idx").alias("wnext"), collect_set("url").alias("wnurl"))
+watch_dataset_agg.select(concat(col("wnext"),col("wnurl")))
 tdw = tedx_dataset_agg.join(watch_dataset_agg, tedx_dataset_agg._id == watch_dataset_agg.idx_ref , "left").select(col("_id"), col("*")).drop("idx_ref")
 tdw2 = tdw.withColumn("day", lit("01"))
 tdw3 = tdw2.withColumn("data_app", concat_ws("-",tdw2.day, substring(tdw2.posted,8,3), substring(tdw2.posted,12,4)))
@@ -88,8 +88,8 @@ write_mongo_options = {
     "uri": mongo_uri,#indirizzo
     "database": "unibg_tedx",#nome db
     "collection": "tedz_data",#collezioni
-    "username": "XXXX",
-    "password": "XXXX",
+    "username": "XXXXX",
+    "password": "XXXXX",
     "ssl": "true",
     "ssl.domain_match": "false"}
     
@@ -97,7 +97,4 @@ from awsglue.dynamicframe import DynamicFrame
 tedx_dataset_dynamic_frame = DynamicFrame.fromDF(tedx_dataset_watch_ord, glueContext, "nested")#converto il db glue in un spark (?)
 
 glueContext.write_dynamic_frame.from_options(tedx_dataset_dynamic_frame, connection_type="mongodb", connection_options=write_mongo_options)#vado a scrivere
-
-
-
 
